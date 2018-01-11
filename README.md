@@ -36,4 +36,4 @@ done
 2. For general use of the current `sequenceQC_reporter` functions
   * Within your R environment, you can import the functions with `source sequenceQC_reporter_functions.R`
 
-3. For detailed information for each function checkout [`sequenceQC_reporter.Rmd`](https://github.com/czbiohub/sequenceQC_reporter/blob/master/sequenceQC_reporter.Rmd) in a working RStudio environment.
+3. For detailed information for each function checkout [`sequenceQC_reporter.Rmd`](https://github.com/czbiohub/sequenceQC_reporter/blob/master/sequenceQC_reporter.Rmd) in a working [RStudio](https://www.rstudio.com/) environment.
