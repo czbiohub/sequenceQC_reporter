@@ -2,7 +2,7 @@
 
 ###### Note: you will need an AWS account with CZ Biohub access. Please see the `eng-support` channel for more information.
 
-Create your project directory by using bash to `AWS S3 sync` the required data from the S3 bucket for czbiohub-seqbot to a local directory. This is an example bash script:
+Create your project directory by using bash to `aws s3 sync` the required data from the S3 bucket for czbiohub-seqbot to a local directory. This is an example bash script:
 
 ```bash
 project_names=('171215_M05295_0067_000000000-BHWTV' '171219_M05295_0068_000000000-BHW7B'  '171221_M05295_0070_000000000-BHWGN' '171222_M05295_0071_000000000-BJT3K' '180105_NB501961_0050_AH73JJBGX5' '180105_M05295_0072_000000000-BJR4D')
