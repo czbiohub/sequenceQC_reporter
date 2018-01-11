@@ -30,7 +30,7 @@ done
   * Copy contents of the above `bash` chunk and change the `project_names` string to some number correct sequencing run ID (Note: this can be a single run ID or multiple run IDs). 
   * `Ctrl-X` and `Y` to save you script. 
   * To view your script `cat sequenceQC_YourReport.sh`
-  * If it looks good: `source sequenceQC_YourReport.sh`...
+  * If it looks good: `source sequenceQC_YourReport.sh`
 
 
 2. For general use of the current `sequenceQC_reporter` functions
