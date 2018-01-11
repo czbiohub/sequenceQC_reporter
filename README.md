@@ -6,7 +6,7 @@
 * *Unmapped* -- right off the sequencer, Illumina's `bcl2fastq.py` generates a report called "laneBarcode.html".
   * These data give early information about well-to-well clusters passing the `bcl2fastq.py` filter
 
-* *Mapped* After your (s)pliced (t)ranscripts (a)lign to your (r)eference, STAR generates a standard report called "log.final.out".
+* *Mapped* -- After your (s)pliced (t)ranscripts (a)lign to your (r)eference, STAR generates a standard report called "log.final.out".
   * These data give information ranging from "Number of input reads" to "Number of splices: Annotated (sjdb)"
 
 * This reporter tool aims to quantify these data and faciliates ease-of-use to determine whether your biological sequence is good to go.
