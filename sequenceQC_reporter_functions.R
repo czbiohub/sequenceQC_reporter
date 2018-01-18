@@ -1,11 +1,3 @@
-
-#Load R libraries
-
-lbry = c("tidyverse", "stringr", "viridis", "gridExtra", "grid", "SparseM")
-lapply(lbry, install.packages, character.only=TRUE)
-lapply(lbry, require, character.only=TRUE)
-
-
 #Load projects into environment. This function lists the projects in the directory with S3-synced files called by the bash script.
 
 #Get project names
@@ -238,9 +230,9 @@ plot_fastq_output = function(fastqPARAMS, PROJECT){
       #guides(fill = FALSE) +
       scale_fill_viridis(guide_legend(title = "log2")) +
       theme(strip.text = element_blank(),
-            plot.title = element_text(size = 5, hjust = 0.5),
-            legend.title = element_text(size = 5),
-            legend.text = element_text(size = 5),
+            plot.title = element_text(size = 9, hjust = 0.5),
+            legend.title = element_text(size = 7),
+            legend.text = element_text(size = 7),
             axis.title = element_blank(),
             axis.ticks = element_blank(),
             axis.text = element_blank()) +
@@ -259,9 +251,9 @@ plot_fastq_output = function(fastqPARAMS, PROJECT){
       #guides(fill = FALSE) +
       scale_fill_viridis(guide_legend(title = "unscaled")) +
       theme(strip.text = element_blank(),
-            plot.title = element_text(size = 5, hjust = 0.5),
-            legend.title = element_text(size = 5),
-            legend.text = element_text(size = 5),
+            plot.title = element_text(size = 9, hjust = 0.5),
+            legend.title = element_text(size = 7),
+            legend.text = element_text(size = 7),
             axis.title = element_blank(),
             axis.ticks = element_blank(),
             axis.text = element_blank()) +
@@ -317,9 +309,9 @@ plot_STAR_output = function(starPARAMS, PROJECT, YOUR_PARAMETER){
         guides(fill = FALSE) +
         scale_fill_viridis(guide_legend(title = paste0("log2 ", parameter_to_plot))) +
         theme(strip.text = element_blank(),
-              plot.title = element_text(size = 5, hjust = 0.5),
-              legend.title = element_text(size = 5),
-              legend.text = element_text(size = 5),
+              plot.title = element_text(size = 7, hjust = 0.5),
+              legend.title = element_text(size = 7),
+              legend.text = element_text(size = 7),
               axis.title = element_blank(),
               axis.ticks = element_blank(),
               axis.text = element_blank()) +
