@@ -12,7 +12,6 @@ This reporter tool aims to use standard report output from `bcl2fastq.py` and `a
   * For multiple runs: `./sync_project.sh 171215_M05295_0067_000000000-BHWTV 171221_M05295_0070_000000000-BHWGN`
 3. Install [RStudio](https://www.rstudio.com/)
   
-4. For general use of the current `sequenceQC_reporter` functions
-  * Within your R environment, you can import the functions with `source sequenceQC_reporter_functions.R`
+4. To use current functions in `sequenceQC_reporter` import at R CLI `source sequenceQC_reporter_functions.R`
 
-5. For detailed information for each function open [`sequenceQC_reporter.Rmd`](https://github.com/czbiohub/sequenceQC_reporter/blob/master/sequenceQC_reporter.Rmd) in your working RStudio environment.
+5. For detailed information for each function, open [`sequenceQC_reporter.Rmd`](https://github.com/czbiohub/sequenceQC_reporter/blob/master/sequenceQC_reporter.Rmd) in your working RStudio environment.
