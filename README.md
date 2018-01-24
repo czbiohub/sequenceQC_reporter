@@ -9,11 +9,11 @@ Aim for this tool is to generate a standard report as well as provide the necess
 
 # usage
 1. Load project data from `czbiohub-seqbot` S3 bucket to a local directory. See usage for `sync_project.sh`:
-   * Option A. Make executable with `chmod +x` > `./sync_project.sh [YOUR_RUN_IDS]`
-   * Option B. Run as bash script > `bash sync_project.sh [YOUR_RUN_IDS]`
-         * Single run > ` bash sync_project.sh 171215_M05295_0067_000000000-BHWTV`
-         * Multiple runs > `bash sync_project.sh 171215_M05295_0067_000000000-BHWTV 171221_M05295_0070_000000000-BHWGN`
-   * Example project structure
+  * Option A. Make executable with `chmod +x` > `./sync_project.sh [YOUR_RUN_IDS]`
+  * Option B. Run as bash script > `bash sync_project.sh [YOUR_RUN_IDS]`
+    * Single run > ` bash sync_project.sh 171215_M05295_0067_000000000-BHWTV`
+    * Multiple runs > `bash sync_project.sh 171215_M05295_0067_000000000-BHWTV 171221_M05295_0070_000000000-BHWGN`
+  * Example project structure
        ```bash
        ├── 171215_M05295_0067_000000000-BHWTV
        │   ├── reports
