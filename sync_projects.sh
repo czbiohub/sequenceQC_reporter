@@ -3,7 +3,7 @@
 project_names=$@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-echo "Downloading data for to $DIR"
+
 
 for project in ${project_names[@]}; do
 echo "Downloading data for $project to $DIR"
