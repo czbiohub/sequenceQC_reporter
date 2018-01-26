@@ -66,7 +66,7 @@ STAR_DATA = getyour_STAR_data(PROJECT_DIR, YOUR_PARAMETER)
 
 
 ####Here are some platemaps for `YOUR_PARAMETER` from `getyour_STAR_data` function. This is saved to your project directory
-```{r, out.width = '60%', fig.cap="Example of log2-scale and unscaled platemaps for PF Clusters"}
+```{r, out.width = '60%', fig.cap="Example of platemaps from `getyour_STAR_data` function"}
 knitr::include_graphics("/Users/foad.green/data/runs/171215_M05295_0067_000000000-BHWTV/171215_M05295_0067_000000000-BHWTV_14_STARreport_log2heatmap.png")
 knitr::include_graphics("/Users/foad.green/data/runs/171215_M05295_0067_000000000-BHWTV/171215_M05295_0067_000000000-BHWTV_15_STARreport_log2heatmap.png")
 knitr::include_graphics("/Users/foad.green/data/runs/171215_M05295_0067_000000000-BHWTV/171215_M05295_0067_000000000-BHWTV_16_STARreport_log2heatmap.png")
