@@ -22,4 +22,4 @@ sequenceQC_reporter reports QC measurements for single-cell RNAseq data and gene
        │   ├── sample-sheets
        │   └── star_logs
        ```
-2. Load `sequenceQC_reporter` functions in R environment with `source("~/sequenceQC_reporter/sequenceQC_reporter_functions.R")`
+3. Load `sequenceQC_reporter` functions in R environment with `source("~/sequenceQC_reporter/sequenceQC_reporter_functions.R")`
