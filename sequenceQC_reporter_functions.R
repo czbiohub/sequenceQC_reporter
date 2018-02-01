@@ -77,21 +77,24 @@ loadLaneBarcode = function(projectDir){
 }
 
 #Return key-value pair for yourParameter
-return.parameterKey = function(projectDir, yourParameter){
+return.parameterKey = function(projectDir, yourParameter, filePattern){
   
-  filenames = list.files(projectDir, pattern = "*log.final.out", full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
+  filenames = list.files(projectDir, pattern = filePattern, full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
   temp = read_lines(filenames[1])
   allParameters = {}
   
   for(i in 1:length(temp)){
     
     allParameters[[i]] = strsplit(temp[i], " \\|")[[1]][1]
+    print("Got keys")
     allParameters = gsub("^\\s+","", allParameters)
+    print("Loading parameters")
   }
   
   names(allParameters) = allParameters
   keys = {}
   keys$index = match(yourParameter, allParameters)
+  print("Match parameters")
   keys$keynames = allParameters[yourParameter]
   
   checklist = {}; for(j in yourParameter){checklist[[j]] = j %in% keys$keynames}
@@ -113,7 +116,9 @@ loadStarLog = function(projectDir, yourParameter){
   filenames = list.files(projectDir, pattern = "*log.final.out", full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
   runID = list(strsplit(projectDir,"00_project_raw_data/")[[1]][2])
   for(i in 1:length(filenames)){runID$sampleID[[i]] = strsplit(filenames[i], "logs/|_S")[[1]][2]}
-  runID$parameterKey = return.parameterKey(projectDir, yourParameter)
+  
+  filePattern = "*log.final.out"
+  runID$parameterKey = return.parameterKey(projectDir, yourParameter, filePattern)
   
   for(j in 1:length(runID$parameterKey$index)){
     currentKey = runID$parameterKey$index[j]
@@ -238,3 +243,44 @@ heatmap.starLog = function(projectDir, yourParameter, samplesheet, starLog){
   }
   return()
 }
+
+
+#Load counts by geneName (important: geneName must be a character string that exists in the htseq count file)
+countsByGene = function(projectDir, geneName = "Rn45s"){
+  
+  
+  filenames = list.files(projectDir, pattern = "*htseq-count", full.names = TRUE, recursive = TRUE)
+  indexFile = read_lines(filenames[1])
+  temp = {} ; for(i in 1:length(indexFile)){
+    temp[[i]] = strsplit(indexFile[i], "\t")[[1]][1]
+  }
+  
+  geneKey = temp
+  #geneName = "Rn45s"
+  index = as.numeric(grep(geneName, geneKey))
+  
+  cellNames = {} ; totalCounts = {}
+  for(i in 1:length(filenames)){
+    temp = read_lines(filenames[i])
+    
+    countValue = as.numeric(strsplit(temp[index], "\t")[[1]][2])
+    if(countValue != 0){
+      #print("Nonzero")
+      targetGene = strsplit(temp[index], "\t")[[1]][1]
+      if(targetGene == geneName){
+        totalCounts[[i]] = countValue
+        cellNames[[i]] = strsplit(filenames[i], "*counts/|_S")[[1]][2]
+      }
+    }
+  }
+  geneCounts = list(totalCounts, cellNames)
+  return(geneCounts)
+  
+}
+
+
+
+
+
+
+
