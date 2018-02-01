@@ -12,13 +12,19 @@ sequenceQC_reporter reports QC measurements for single-cell RNAseq data and gene
   * Separate with " " for multiple `bash sync_project.sh 171215_M05295_0067_000000000-BHWTV 171221_M05295_0070_000000000-BHWGN`
   * Example project directory
        ```bash
-       ├── 171215_M05295_0067_000000000-BHWTV
-       │   ├── reports
-       │   ├── sample-sheets
-       │   └── star_logs
-       ├── 171221_M05295_0070_000000000-BHWGN
-       │   ├── reports
-       │   ├── sample-sheets
-       │   └── star_logs
+         .
+         ├── 00_project_raw_data
+         │   ├── 180118_M05295_0075_000000000-D3H9T
+         │   │   ├── htseq-counts
+         │   │   ├── reports
+         │   │   ├── sample-sheets
+         │   │   ├── sorted_bams
+         │   │   └── star_logs
+         │   └── 180126_M05295_0077_000000000-BJNBC
+         │       ├── htseq-counts
+         │       ├── reports
+         │       ├── sample-sheets
+         │       ├── sorted_bams
+         │       └── star_logs
        ```
 2. Load `sequenceQC_reporter` functions in R environment with `source("~/sequenceQC_reporter/sequenceQC_reporter_functions.R")`
