@@ -1,5 +1,5 @@
 ---
-title: "Sequence QC Reporter Tool: Map well-to-well quality metrics"
+title: "sequenceQC_reporter"
 output:
   prettydoc::html_pretty:
     theme: cayman
@@ -9,26 +9,17 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-> Sequence QC Reporter Tool helps visualize quality control (QC) metrics from both unmapped and mapped data entries that are already available to the user.
+Step-by-step process of an example project
 
-* Right off the sequencer: Illumina's bcl2fastq.py generates a report called "laneBarcode.html".... 
-+ These data give early information about well-to-well clusters passing the script's filter
-+ Your data point is the demultiplexed sample that is not yet mapped to the genome.
-
-* Right after your (s)pliced (t)ranscripts (a)lign to your (r)eference: STAR's output generates a generic statistics report called "log.final.out".
-+ These data give information ranging from "Number of input reads" to "Number of splices: Annotated (sjdb)"
-
-* This reporter tool aims to quantify these data and allow to visually determine whether your biological sequence is good to go. 
-
-# Load libraries
+* Load R libraries
 ```{r, warning = FALSE, message = FALSE}
 lbry = c("tidyverse", "stringr", "viridis", "gridExtra", "grid", "SparseM")
 lapply(lbry, install.packages, character.only=TRUE)
 lapply(lbry, require, character.only=TRUE)
 ```
 
-# Step-by-step process of an example project.
-## Note: confirm 'sequenceQC_reporter' github repository is cloned and project data were successfully synced from the s3 bucket 'czbiohub-seqbot using the bash terminal command 'bash sync_projects.sh yourRunID'. Files from sequencing run should be present in the path '/sequenceQC_reporter/00_project_raw_data/'. If files are not present, please visit the repository README for more information: https://github.com/czbiohub/sequenceQC_reporter
+
+* Confirm 'sequenceQC_reporter' github repository is cloned and project data were successfully synced from the s3 bucket 'czbiohub-seqbot using the bash terminal command 'bash sync_projects.sh yourRunID'. Files from sequencing run should be present in the path '/sequenceQC_reporter/00_project_raw_data/'. If files are not present, please visit the repository README for more information: https://github.com/czbiohub/sequenceQC_reporter
 ```{r}
 #Here's an example runID
 yourRunID = '180131_NB501961_0057_AHFMVHBGX5'
@@ -36,18 +27,23 @@ projectDir = paste0("~/sequenceQC_reporter/00_project_raw_data/", yourRunID)
 source('~/sequenceQC_reporter/sequenceQC_reporter_functions.R')
 ```
 
-# Load samplesheet into your R environment from '/sequenceQC_reporter/00_project_raw_data/sample-sheets/'. 
+* Load samplesheet from '/sequenceQC_reporter/00_project_raw_data/sample-sheets/'. 
 ```{r}
 samplesheet = loadSamplesheet(projectDir)
 ```
 
-#For bcl files that were demultiplexed to fastQ format (using the Illumina 'bcl2fastq.py' script), a report file called 'laneBarcode.html' should exist in the path '/sequenceQC_reporter/00_project_raw_data/reports/'. Load and create log2-scaled and unscaled heatmaps of these data. Plots and corresponding data files will write to '/sequenceQC_reporter/00_project_raw_data/yourRunID/'
+* For bcl files that were demultiplexed to fastQ format (using the Illumina 'bcl2fastq.py' script), a report file called 'laneBarcode.html' should exist in the path '/sequenceQC_reporter/00_project_raw_data/reports/'. Load and create log2-scaled and unscaled heatmaps of these data. Plots and corresponding data files will write to '/sequenceQC_reporter/00_project_raw_data/yourRunID/'
 ```{r}
 laneBarcode = loadLaneBarcode(projectDir)
 laneBarcode.platemap =  heatmap.laneBarcode(projectDir, samplesheet, laneBarcode)
 ```
 
-#For fastQ files that were STAR aligned to a genome, log files called 'log.final.out' should exist in the path '/sequenceQC_reporter/00_project_raw_data/star-logs/'. Choose one or more parameters from this file (example below). Load and create log2-scaled and unscaled heatmaps for each parameter of these data. Plots and corresponding data files will write to '/sequenceQC_reporter/00_project_raw_data/yourRunID/'.
+*For fastQ files that were STAR aligned to a genome, log files called 'log.final.out' should exist in the path '/sequenceQC_reporter/00_project_raw_data/star-logs/'. Choose one or more parameters from this file (example below).
+```{r, out.width = '60%', fig.cap="Example of logfinalout file"}
+knitr::include_graphics("/sequenceQC_reporter/figures/logfinalout.png")
+```
+
+* Load and create log2-scaled and unscaled heatmaps for each parameter of these data. Plots and corresponding data files will write to '/sequenceQC_reporter/00_project_raw_data/yourRunID/'.
 ```{r}
 yourParameter = c('Uniquely mapped reads number', 'Number of input reads', 'Uniquely mapped reads %')
 starLog = loadStarLog(projectDir, yourParameter)
