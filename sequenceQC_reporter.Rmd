@@ -38,7 +38,7 @@ laneBarcode = loadLaneBarcode(projectDir)
 laneBarcode.platemap =  heatmap.laneBarcode(projectDir, samplesheet, laneBarcode)
 ```
 
-*For fastQ files that were STAR aligned to a genome, log files called 'log.final.out' should exist in the path '/sequenceQC_reporter/00_project_raw_data/star-logs/'. Choose one or more parameters from this file (example below).
+* For fastQ files that were STAR aligned to a genome, log files called 'log.final.out' should exist in the path '/sequenceQC_reporter/00_project_raw_data/star-logs/'. Choose one or more parameters from this file (example below).
 ```{r, out.width = '60%', fig.cap="Example of logfinalout file"}
 knitr::include_graphics("/sequenceQC_reporter/figures/logfinalout.png")
 ```
@@ -48,5 +48,12 @@ knitr::include_graphics("/sequenceQC_reporter/figures/logfinalout.png")
 yourParameter = c('Uniquely mapped reads number', 'Number of input reads', 'Uniquely mapped reads %')
 starLog = loadStarLog(projectDir, yourParameter)
 starLog.platemap = heatmap.starLog(projectDir, yourParameter, samplesheet, starLog)
+```
+
+* Load and create log2-scaled and unscaled heatmaps for target genes from htseq-count files. Plots and corresponding data files will write to '/sequenceQC_reporter/00_project_raw_data/yourRunID/'.
+```{r}
+dashList = list("Rn45s", "ERCC-00096", "ERCC-00002", "ERCC-00130", "ERCC-00074", "ERCC-00113", "ERCC-00136")
+geneCounts = loadGeneCounts(dashList)
+geneCount.platemaps = heatmap.geneCounts(projectDir, samplesheet, geneCounts, dashList)
 ```
 
