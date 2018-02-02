@@ -12,9 +12,8 @@ generate_wells = function(NUMBER_OF_PLATES){
 }
 
 #Sort data to samplesheet index to "Sample_ID"
-sortSheetData = function(samplesheet, starLog, laneBarcode){
-  df = left_join(samplesheet, starLog, by = "Sample_ID", sort = FALSE)
-  df = left_join(df, laneBarcode, by = "Sample_ID", sort = FALSE)
+sortSheetData = function(samplesheet, whatever){
+  df = left_join(samplesheet, whatever, by = "Sample_ID", sort = FALSE)
   return(df)
 }
 
@@ -48,6 +47,13 @@ loadLaneBarcode = function(projectDir){
   laneBarcodeList = {}
   for(i in 1:length(projectDir)){
     barcodeFile = list.files(projectDir, pattern = "laneBarcode.html", full.names = TRUE, recursive = TRUE)
+    if(length(barcodeFile) == 0){
+      
+      print(paste0("No `laneBarcode.html` was found for sequencing run: ", runID))
+      break
+      
+      }
+    
     for(j in barcodeFile){
 
       sampleList = {} ; barcodeList = {} ; clusterList = {}
@@ -114,6 +120,13 @@ return.parameterKey = function(projectDir, yourParameter, filePattern){
 loadStarLog = function(projectDir, yourParameter){
   
   filenames = list.files(projectDir, pattern = "*log.final.out", full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
+  if(length(filenames) == 0){
+    
+    print(paste0("No `log.final.out` files were found for sequencing run: ", runID))
+    break
+    
+  }
+  
   runID = list(strsplit(projectDir,"00_project_raw_data/")[[1]][2])
   for(i in 1:length(filenames)){runID$sampleID[[i]] = strsplit(filenames[i], "logs/|_S")[[1]][2]}
   
@@ -245,8 +258,8 @@ heatmap.starLog = function(projectDir, yourParameter, samplesheet, starLog){
 }
 
 
-#Load counts by geneName (important: geneName must be a character string that exists in the htseq count file)
-countsByGene = function(projectDir, geneName = "Rn45s"){
+#Parse htseq-count files to count by a given input for geneName (important: geneName must be a character string that exists in the htseq count file)
+countsByGene = function(projectDir, geneName){
   
   
   filenames = list.files(projectDir, pattern = "*htseq-count", full.names = TRUE, recursive = TRUE)
@@ -256,7 +269,6 @@ countsByGene = function(projectDir, geneName = "Rn45s"){
   }
   
   geneKey = temp
-  #geneName = "Rn45s"
   index = as.numeric(grep(geneName, geneKey))
   
   cellNames = {} ; totalCounts = {}
@@ -274,13 +286,75 @@ countsByGene = function(projectDir, geneName = "Rn45s"){
     }
   }
   geneCounts = list(totalCounts, cellNames)
+  print(paste0("Counts loaded for: ", geneName))
   return(geneCounts)
   
 }
 
+#Load a dataframe with counts for a list containing multiple geneNames indexed by 'Sample_ID'
+loadGeneCounts = function(dashList){
+  
+  lil_dashGenes = {}
+  for(i in 1:length(dashList)){
+    geneCounts = countsByGene(projectDir, dashList[i])
+    lil_dashGenes[[i]] = geneCounts
+  }
+  
+  df = data_frame()
+  for(i in 1:length(dashList)){
+    genesData = data_frame("geneCounts" = as.numeric(unlist(lil_dashGenes[[i]][[1]])), "Sample_ID" = unlist(lil_dashGenes[[i]][[2]]), "geneName" = dashList[i])
+    df = rbind(df, genesData)
+  }
+  
+  print(paste0("Loaded gene counts indexed by samplesheet 'Sample_ID' for: ", dashList))
+  
+  return(df)
+  
+}
 
-
-
-
-
-
+#Generate figures from htseq-count data.
+heatmap.geneCounts = function(projectDir, samplesheet, geneCounts, dashList){
+  
+  runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
+  data = data_frame()
+  
+  for(i in 1:length(dashList)){
+    temp = geneCounts[grep(dashList[i], geneCounts$geneName), ]
+    countsReport = left_join(samplesheet, temp, by = "Sample_ID", sort = FALSE)
+    
+    data = countsReport
+    p = ggplot() +
+      geom_raster(data, 
+                  mapping = aes(x = col, y = row, fill = log2(data$geneCounts))) +
+      scale_x_discrete(limits = c(1:24)) +
+      scale_y_discrete(limits = rev(levels(data$row))) +
+      coord_equal() +
+      scale_fill_viridis(guide_legend(title = "log2")) +
+      theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
+            legend.title = element_text(size = 7), legend.text = element_text(size = 7),
+            axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
+      facet_wrap(~data$Description) + 
+      ggtitle(paste0("Gene counts (log2) for: ", dashList[[i]])) +
+      ggsave(paste0(projectDir,"/", runID, "_", dashList[[i]],"_log2scale_heatmap.png"))
+    
+    #print(p)
+    
+    
+    up = ggplot() +
+      geom_raster(data, 
+                  mapping = aes(x = col, y = row, fill = data$geneCounts)) +
+      scale_x_discrete(limits = c(1:24)) +
+      scale_y_discrete(limits = rev(levels(data$row))) +
+      coord_equal() +
+      scale_fill_viridis(guide_legend(title = "log2")) +
+      theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
+            legend.title = element_text(size = 7), legend.text = element_text(size = 7),
+            axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
+      facet_wrap(~data$Description) + 
+      ggtitle(paste0("Gene counts (unscaled) for: ", dashList[[i]])) +
+      ggsave(paste0(projectDir,"/", runID, "_", dashList[[i]],"_unscaled_heatmap.png"))
+    
+    #print(up)
+    
+  }
+}
