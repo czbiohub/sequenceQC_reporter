@@ -28,15 +28,25 @@ source('sequenceQC_reporter_functions.R')
 knitr::include_graphics("/Users/foad.green/sequenceQC_reporter/examplewd.png")
 ```
 
-####Try getting your FASTQ data for "PF Clusters"
+#### Try getting your FASTQ data for "PF Clusters"
 Current output for `getyour_FASTQ_data` function:
 * Dataframe used to map plates (saved to pwd as .csv)
 * Platemap for passed-filter clusters (log2scale; saved as .png)
 * Platemap for passed-filter clusters (unscaled; saved as .png)
-```{r, eval = FALSE, warning = FALSE, message = FALSE}
-PROJECT_DIR = "~/data/runs"
+```{r, eval = TRUE, warning = FALSE, message = FALSE}
+PROJECT_DIR = "~/data/runs" #here("data","runs")
 FASTQ_data = getyour_FASTQ_data(PROJECT_DIR)
+
 ```
+
+```{r}
+PROJECT_DIR = "~/data/runs"
+
+projects = load_projects(PROJECT_DIR)
+fastqParams = get_BCL2FASTQ_csv(setup_samplesheet(projects))
+plot_fastq_output(fastqParams, projects)
+```
+
 
 ####Here are some example platemaps from `getyour_FASTQ_data` functionthat will be saved to your project directory
 ```{r, out.width = '60%', fig.cap="Example of log2-scale and unscaled platemaps for PF Clusters"}
