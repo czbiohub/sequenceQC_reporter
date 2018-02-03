@@ -159,6 +159,8 @@ loadStarLog = function(projectDir, yourParameter){
 
 #Generate figures from Lane Barcode data
 heatmap.laneBarcode = function(projectDir, samplesheet, laneBarcode){
+  dir.create(paste0(projectDir, "/figures/laneBarcode/"), showWarnings = FALSE)
+  plotsPath = paste0(projectDir, "/figures/laneBarcode/")
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
   laneBarcodeReport = left_join(samplesheet, laneBarcode, by = "Sample_ID", sort = FALSE)
   write_csv(x = laneBarcodeReport, path = paste0(projectDir,"/", runID,"_laneBarcodeReport.csv"))
@@ -182,7 +184,7 @@ heatmap.laneBarcode = function(projectDir, samplesheet, laneBarcode){
           axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
     facet_wrap(~data$Description) +
     ggtitle(plotTitle)
-  ggsave(paste0(projectDir,"/", runID, "_laneBarcode_log2scale_heatmap.png"))
+  ggsave(paste0(plotsPath, runID, "_laneBarcode_log2scale_heatmap.png"))
   print("Saved heatmap for log2-scaled clusters")
   
   unscaled_heatmap = ggplot() +
@@ -197,7 +199,7 @@ heatmap.laneBarcode = function(projectDir, samplesheet, laneBarcode){
           axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
     facet_wrap(~data$Description) +
     ggtitle(plotTitle)
-  ggsave(paste0(projectDir,"/", runID, "_laneBarcode_unscaled_heatmap.png"))
+  ggsave(paste0(plotsPath, runID, "_laneBarcode_unscaled_heatmap.png"))
   print("Saved heatmap for unscaled clusters")
   
   heatmaps = list(log2_heatmap, unscaled_heatmap)
@@ -208,8 +210,9 @@ heatmap.laneBarcode = function(projectDir, samplesheet, laneBarcode){
 
 #Generate figures from STAR log data.
 
-heatmap.starLog = function(projectDir, yourParameter, samplesheet, starLog){
-  
+plots.starLog = function(projectDir, yourParameter, samplesheet, starLog){
+  dir.create(paste0(projectDir, "/figures/star/"), showWarnings = FALSE)
+  plotsPath = paste0(projectDir, "/figures/star/")
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
   starLogReport = left_join(samplesheet, starLog, by = "Sample_ID", sort = FALSE)
   write_csv(x = starLogReport, path = paste0(projectDir,"/", runID,"_starLogReport.csv"))
@@ -238,7 +241,7 @@ heatmap.starLog = function(projectDir, yourParameter, samplesheet, starLog){
             axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
       facet_wrap(~data$Description) +
       ggtitle(plotTitle)
-    ggsave(paste0(projectDir,"/", runID, "_", parameterName,"_starLogReport_log2scale_heatmap.png"))
+    ggsave(paste0(plotsPath, runID, "_", parameterName,"_starLogReport_log2scale_heatmap.png"))
     
     unscaled_heatmap = ggplot() +
       geom_raster(data,
@@ -249,10 +252,56 @@ heatmap.starLog = function(projectDir, yourParameter, samplesheet, starLog){
             legend.title = element_text(size = 7), legend.text = element_text(size = 7),
             axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
       facet_wrap(~data$Description) +
-      ggtitle(plotTitle)
-    ggsave(paste0(projectDir,"/", runID, "_", parameterName,"_starLogReport_unscaled_heatmap.png"))
-    figures$log2[[i]] = log2_heatmap
-    figures$unscaled[[i]] = unscaled_heatmap
+      ggtitle(plotTitle) +
+      ggsave(paste0(plotsPath, runID, "_", parameterName,"_starLogReport_unscaled_heatmap.png"))
+    
+    
+    log2_boxplot = ggplot(data) +
+      geom_boxplot(mapping = aes(x = as.factor(Description), y = log2(data[[yourParameter[i]]]), fill = as.factor(Description))) +
+      labs(x = "Plate number", y = parameterName) + 
+      scale_fill_viridis(discrete = TRUE) + guides(fill = FALSE) +
+      theme_classic() +
+      theme(axis.text.x=element_text(angle = 90)) +
+      ggtitle(plotTitle) +
+      ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_boxplot.png"))
+    
+    unscaled_boxplot = ggplot(data) +
+      geom_boxplot(mapping = aes(x = as.factor(Description), y = data[[yourParameter[i]]], fill = as.factor(Description))) +
+      labs(x = "Plate number", y = parameterName) + 
+      scale_fill_viridis(discrete = TRUE) + guides(fill = FALSE) +
+      theme_classic() +
+      theme(axis.text.x=element_text(angle = 90)) +
+      ggtitle(plotTitle) +
+      ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_unscaled_boxplot.png"))
+  }
+  
+  if(is.vector(data$`Uniquely mapped reads number`) == TRUE){
+    
+    if(is.vector(data$`Number of input reads`) == TRUE){
+      ggplot(data) +
+        geom_point(mapping = aes(x = log2(`Uniquely mapped reads number`), y = log2(`Number of input reads`)), alpha = 0.6, size = 0.2) +
+        labs(x = "Uniquely mapped reads number", y = "Number of input reads") +
+        facet_wrap(~Description) + ggtitle("Correlation of Unmapped Input to Mapped Unique") +
+        theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
+        ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_scatterplot.png"))
+      
+      if(is.vector(data$`Uniquely mapped reads %`) == TRUE){
+        ggplot(data) +
+          geom_point(mapping = aes(x = log2(`Uniquely mapped reads number`), y = `Uniquely mapped reads %`), alpha = 0.6, size = 0.2) +
+          labs(x = "Uniquely mapped reads number", y = "Uniquely mapped reads %") +
+          facet_wrap(~Description) + ggtitle("Correlation of Mapped Reads % to Mapped Unique") +
+          theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
+          ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_mappedReads2percent_scatterplot.png"))
+        
+        
+        ggplot(data) +
+          geom_point(mapping = aes(x = log2(`Number of input reads`), y = `Uniquely mapped reads %`), alpha = 0.6, size = 0.2) +
+          labs(x = "Number of input reads", y = "Uniquely mapped reads %") +
+          facet_wrap(~Description) + ggtitle("Correlation of Mapped Reads % to Unmapped Input") +
+          theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
+          ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_unmappedReads2percent_scatterplot.png"))
+      }
+    }
   }
   return()
 }
@@ -260,7 +309,6 @@ heatmap.starLog = function(projectDir, yourParameter, samplesheet, starLog){
 
 #Parse htseq-count files to count by a given input for geneName (important: geneName must be a character string that exists in the htseq count file)
 countsByGene = function(projectDir, geneName){
-  
   
   filenames = list.files(projectDir, pattern = "*htseq-count", full.names = TRUE, recursive = TRUE)
   indexFile = read_lines(filenames[1])
@@ -313,7 +361,9 @@ loadGeneCounts = function(dashList){
 }
 
 #Generate figures from htseq-count data.
-heatmap.geneCounts = function(projectDir, samplesheet, geneCounts, dashList){
+plot.geneCounts = function(projectDir, samplesheet, geneCounts, dashList, starLog){
+  dir.create(paste0(projectDir, "/figures/htseq-count/"), showWarnings = FALSE)
+  plotsPath = paste0(projectDir, "/figures/htseq-count/")
   
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
   data = data_frame()
@@ -321,9 +371,8 @@ heatmap.geneCounts = function(projectDir, samplesheet, geneCounts, dashList){
   for(i in 1:length(dashList)){
     temp = geneCounts[grep(dashList[i], geneCounts$geneName), ]
     countsReport = left_join(samplesheet, temp, by = "Sample_ID", sort = FALSE)
-    
     data = countsReport
-    p = ggplot() +
+    log2_heatmap = ggplot() +
       geom_raster(data, 
                   mapping = aes(x = col, y = row, fill = log2(data$geneCounts))) +
       scale_x_discrete(limits = c(1:24)) +
@@ -335,12 +384,9 @@ heatmap.geneCounts = function(projectDir, samplesheet, geneCounts, dashList){
             axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
       facet_wrap(~data$Description) + 
       ggtitle(paste0("Gene counts (log2) for: ", dashList[[i]])) +
-      ggsave(paste0(projectDir,"/", runID, "_", dashList[[i]],"_log2scale_heatmap.png"))
+      ggsave(paste0(plotsPath, runID, "_", dashList[[i]],"_log2scale_heatmap.png"))
     
-    #print(p)
-    
-    
-    up = ggplot() +
+    unscaled_heatmap = ggplot() +
       geom_raster(data, 
                   mapping = aes(x = col, y = row, fill = data$geneCounts)) +
       scale_x_discrete(limits = c(1:24)) +
@@ -352,9 +398,56 @@ heatmap.geneCounts = function(projectDir, samplesheet, geneCounts, dashList){
             axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
       facet_wrap(~data$Description) + 
       ggtitle(paste0("Gene counts (unscaled) for: ", dashList[[i]])) +
-      ggsave(paste0(projectDir,"/", runID, "_", dashList[[i]],"_unscaled_heatmap.png"))
+      ggsave(paste0(plotsPath, runID, "_", dashList[[i]],"_unscaled_heatmap.png"))
     
-    #print(up)
-    
+    if(missing(starLog)){
+      print("No STAR log data found. Plotting only gene counts data.")
+    } else {
+      
+      print("Found STAR log data. Plotting genes and reads. ")
+      genesReads = left_join(countsReport, starLog, by = "Sample_ID", sort = FALSE)
+      data = genesReads
+      
+      if(is.vector(data$`Uniquely mapped reads number`) == TRUE){
+        ggplot(data) +
+          geom_point(mapping = aes(x = log2(`Uniquely mapped reads number`), y = log2(data$geneCounts)), alpha = 0.6, size = 0.2) +
+          labs(x = "Uniquely mapped reads number", y = "Gene Counts") + 
+          ggtitle(paste0("Correlation of gene counts (log2) for: ", dashList[[i]], " to Mapped Reads")) +
+          facet_wrap(~Description) +
+          theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
+          ggsave(paste0(plotsPath, runID, "_", dashList[[i]], "_log2scale_Mapped_scatterplot.png"))
+        
+        
+        
+        if(is.vector(data$`Number of input reads`) == TRUE){
+          data$ratioDashedGene = (data$geneCounts/data$`Number of input reads`)*100
+          ggplot(data) +
+            geom_point(mapping = aes(x = log2(`Number of input reads`), y = log2(data$geneCounts)), alpha = 0.6, size = 0.2) +
+            labs(x = "Number of input reads", y = "Gene Counts") + 
+            ggtitle(paste0("Correlation of gene counts (log2) for: ", dashList[[i]], " to Unmapped Reads")) +
+            facet_wrap(~Description) +
+            theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
+            ggsave(paste0(plotsPath, runID, "_", dashList[[i]], "_Unmapped_log2scale_scatterplot.png"))
+          
+          ggplot(data) +
+            geom_boxplot(mapping = aes(x = as.factor(Description), y = ratioDashedGene, fill = as.factor(Description))) +
+            labs(x = "Plate number", y = "Gene/Total %") +
+            scale_fill_viridis(discrete = TRUE) + guides(fill = FALSE) +
+            ggtitle(paste0("Proportion of gene counts for: ", dashList[[i]], " to Unmapped Reads")) +
+            theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
+            ggsave(paste0(plotsPath, runID, "_", dashList[[i]], "_totalGene2input_unscaled_boxplot.png"))
+          
+          if(is.vector(data$`Uniquely mapped reads %`) == TRUE){
+            ggplot(data) +
+              geom_point(mapping = aes(x = `Uniquely mapped reads %`, y = log2(data$geneCounts)), alpha = 0.6, size = 0.2) +
+              labs(x = "Uniquely mapped reads %", y = "Gene Counts") + 
+              ggtitle(paste0("Correlation of gene counts (log2) for: ", dashList[[i]], " to Mapped Read %")) +
+              facet_wrap(~Description) +
+              theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
+              ggsave(paste0(plotsPath, runID, "_", dashList[[i]], "_MappedPercent_log2scale_scatterplot.png"))
+          }
+        }
+      }
+    }
   }
 }
