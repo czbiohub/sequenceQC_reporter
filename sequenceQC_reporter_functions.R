@@ -40,46 +40,59 @@ loadSamplesheet = function(projectDir){
   return(samplesheet)
 }
 
-#Generate your FASTQ stats - this function scrapes Illumina bcl2fastq html report files and sorts data like "passed-filter" clusters, samples, and barcodes.
+#Parse demultiplex html report files and sort data
+parseLaneBarcode = function(barcodeFile, runID){
+  for(j in barcodeFile){
+    sampleList = {} ; barcodeList = {} ; clusterList = {}
+    temp = read_lines(j, skip = 42)
+    sampleList[[j]] = temp[seq(2, length(temp), 14)]
+    barcodeList[[j]] = temp[seq(3, length(temp), 14)]
+    clusterList[[j]] = temp[seq(4,length(temp),14)]
+  }
+  
+  samples = {} ; clusters = {} ; barcodes = {}
+  for(j in barcodeFile){
+    samples[[j]] = unlist(sampleList[[j]])
+    clusters[[j]] = unlist(clusterList[[j]])
+    barcodes[[j]] = unlist(barcodeList[[j]])
+  }
+  
+  laneBarcodeReport = list(unlist(samples), unlist(clusters), unlist(barcodes))
+  
+  for (x in 1:length(laneBarcodeReport)){laneBarcodeReport[[x]] = str_extract(laneBarcodeReport[[x]], "(?<=>)[^<]+")}
+  
+  laneBarcodeReport[[2]] = as.numeric(gsub(",", "", laneBarcodeReport[[2]]))
+  df = data_frame(Sample_ID = laneBarcodeReport[[1]], clusters = laneBarcodeReport[[2]], barcodes = laneBarcodeReport[[3]])
+  print(paste0("Demultiplexation report loaded for sequencing run: ", runID))
+  return(df)
+}
+
+
+#Load demultiplex html report data
 loadLaneBarcode = function(projectDir){
   
   runID = {} ; for(i in projectDir){runID[[i]]= strsplit(i,"00_project_raw_data/")[[1]][2]}
   laneBarcodeList = {}
   for(i in 1:length(projectDir)){
     barcodeFile = list.files(projectDir, pattern = "laneBarcode.html", full.names = TRUE, recursive = TRUE)
+    
+    #For batch barcodes
+    if(length(barcodeFile) >= 1){
+      allLanes = data_frame()
+      for(j in 1:length(barcodeFile)){
+        fn = parseLaneBarcode(barcodeFile[j], runID)
+        allLanes = rbind(allLanes, fn)
+      }
+      print(paste0("Binding all reports to a data frame for ", runID))
+    }
+    
+    #If no barcodes exist
     if(length(barcodeFile) == 0){
-      
       print(paste0("No `laneBarcode.html` was found for sequencing run: ", runID))
       break
       
-      }
-    
-    for(j in barcodeFile){
-
-      sampleList = {} ; barcodeList = {} ; clusterList = {}
-      temp = read_lines(j, skip = 42)
-      sampleList[[j]] = temp[seq(2, length(temp), 14)]
-      barcodeList[[j]] = temp[seq(3, length(temp), 14)]
-      clusterList[[j]] = temp[seq(4,length(temp),14)]
     }
-    
-    samples = {} ; clusters = {} ; barcodes = {}
-    for(j in barcodeFile){
-      samples[[j]] = unlist(sampleList[[j]])
-      clusters[[j]] = unlist(clusterList[[j]])
-      barcodes[[j]] = unlist(barcodeList[[j]])
-    }
-    
-    laneBarcodeReport = list(unlist(samples), unlist(clusters), unlist(barcodes))
-    
-    for (x in 1:length(laneBarcodeReport)){laneBarcodeReport[[x]] = str_extract(laneBarcodeReport[[x]], "(?<=>)[^<]+")}
-    
-    laneBarcodeReport[[2]] = as.numeric(gsub(",", "", laneBarcodeReport[[2]]))
-    df = data_frame(Sample_ID = laneBarcodeReport[[1]], clusters = laneBarcodeReport[[2]], barcodes = laneBarcodeReport[[3]])
-    print(paste0("Demultiplexation report loaded for sequencing run: ", runID))
-    
   }
-  return(df)
 }
 
 #Return key-value pair for yourParameter
