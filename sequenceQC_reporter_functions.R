@@ -13,8 +13,10 @@ generate_wells = function(NUMBER_OF_PLATES){
 
 #Sort data to samplesheet index to "Sample_ID"
 sortSheetData = function(samplesheet, whatever){
+  
   df = left_join(samplesheet, whatever, by = "Sample_ID", sort = FALSE)
   return(df)
+  
 }
 
 #Load samplesheet for data generation and plotting. This function can be called separately for csv-only (data) and png-only (plot) generation. 
@@ -33,21 +35,27 @@ loadSamplesheet = function(projectDir){
     samplesheet$Description = rep(1:NUMBER_OF_PLATES, each=384)
     
     if(is.integer(samplesheet$`Sample_ID`) == TRUE){
+      
       samplesheet$`Sample_ID` = as.character(samplesheet$`Sample_ID`)
     }
+    
     print(paste0("Samplesheet loaded for sequencing run: ", runID))
   }
+  
   return(samplesheet)
 }
 
 #Parse demultiplex html report files and sort data
-parseLaneBarcode = function(barcodeFile, runID){
+parseLaneBarcode = function(barcodeFile){
+  
   for(j in barcodeFile){
+    
     sampleList = {} ; barcodeList = {} ; clusterList = {}
     temp = read_lines(j, skip = 42)
     sampleList[[j]] = temp[seq(2, length(temp), 14)]
     barcodeList[[j]] = temp[seq(3, length(temp), 14)]
     clusterList[[j]] = temp[seq(4,length(temp),14)]
+    
   }
   
   samples = {} ; clusters = {} ; barcodes = {}
@@ -63,9 +71,42 @@ parseLaneBarcode = function(barcodeFile, runID){
   
   laneBarcodeReport[[2]] = as.numeric(gsub(",", "", laneBarcodeReport[[2]]))
   df = data_frame(Sample_ID = laneBarcodeReport[[1]], clusters = laneBarcodeReport[[2]], barcodes = laneBarcodeReport[[3]])
-  print(paste0("Demultiplexation report loaded for sequencing run: ", runID))
+  df$path = barcodeFile
   return(df)
+  
 }
+
+
+
+#Parse read counts for RL's amplicon fastqs
+parseAmpliconCounts = function(countFile){
+  countList = {} ; sampleList = {}
+  temp = read_lines(countFile)
+  for(j in 1:length(temp)){
+    countList[[j]] = strsplit(temp[j], "/|\"\t")[[1]][3]
+    sampleList[[j]] = strsplit(temp[j], "/|\"\t")[[1]][2]
+  }
+  ampliconCounts = data_frame("readCounts" = unlist(countList), "Sample_ID" = unlist(sampleList))
+  return(ampliconCounts)
+}
+
+
+#Load read counts for RL's amplicon fastqs
+loadAmpliconCounts = function(projectDir){
+  
+  runID = {} ; for(i in projectDir){runID[[i]]= strsplit(i,"00_project_raw_data/")[[1]][2]}
+  for(i in 1:length(projectDir)){
+    countFile = list.files(projectDir, pattern = "readcount.txt", full.names = TRUE, recursive = TRUE)
+    allAmps= data_frame()
+    for(j in 1:length(countFile)){
+      fn = parseAmpliconCounts(countFile[j])
+      allAmps = rbind(allAmps, fn)
+    }
+  }
+  return(allAmps)
+}
+
+
 
 
 #Load demultiplex html report data
@@ -76,22 +117,24 @@ loadLaneBarcode = function(projectDir){
   for(i in 1:length(projectDir)){
     barcodeFile = list.files(projectDir, pattern = "laneBarcode.html", full.names = TRUE, recursive = TRUE)
     
-    #For batch barcodes
-    if(length(barcodeFile) >= 1){
-      allLanes = data_frame()
-      for(j in 1:length(barcodeFile)){
-        fn = parseLaneBarcode(barcodeFile[j], runID)
-        allLanes = rbind(allLanes, fn)
-      }
-      print(paste0("Binding all reports to a data frame for ", runID))
-    }
-    
-    #If no barcodes exist
+    #If no barcode files exist
     if(length(barcodeFile) == 0){
       print(paste0("No `laneBarcode.html` was found for sequencing run: ", runID))
       break
       
     }
+    
+    #For batch directories of barcode files
+    if(length(barcodeFile) >= 1){
+      allLanes = data_frame()
+      for(j in 1:length(barcodeFile)){
+        fn = parseLaneBarcode(barcodeFile[j])
+        allLanes = rbind(allLanes, fn)
+      }
+      print(paste0("Binding all reports to a data frame for ", runID))
+    }
+    print(paste0("Demultiplexation report loaded for sequencing run: ", runID))
+    return(allLanes)
   }
 }
 
@@ -171,7 +214,8 @@ loadStarLog = function(projectDir, yourParameter){
 }
 
 #Generate figures from Lane Barcode data
-heatmap.laneBarcode = function(projectDir, samplesheet, laneBarcode){
+plot.laneBarcode = function(projectDir, samplesheet, laneBarcode){
+  dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
   dir.create(paste0(projectDir, "/figures/laneBarcode/"), showWarnings = FALSE)
   plotsPath = paste0(projectDir, "/figures/laneBarcode/")
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
@@ -223,7 +267,8 @@ heatmap.laneBarcode = function(projectDir, samplesheet, laneBarcode){
 
 #Generate figures from STAR log data.
 
-plots.starLog = function(projectDir, yourParameter, samplesheet, starLog){
+plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
+  dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
   dir.create(paste0(projectDir, "/figures/star/"), showWarnings = FALSE)
   plotsPath = paste0(projectDir, "/figures/star/")
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
@@ -375,6 +420,7 @@ loadGeneCounts = function(dashList){
 
 #Generate figures from htseq-count data.
 plot.geneCounts = function(projectDir, samplesheet, geneCounts, dashList, starLog){
+  dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
   dir.create(paste0(projectDir, "/figures/htseq-count/"), showWarnings = FALSE)
   plotsPath = paste0(projectDir, "/figures/htseq-count/")
   
@@ -464,3 +510,8 @@ plot.geneCounts = function(projectDir, samplesheet, geneCounts, dashList, starLo
     }
   }
 }
+
+
+
+
+
