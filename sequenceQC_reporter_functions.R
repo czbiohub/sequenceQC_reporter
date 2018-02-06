@@ -86,7 +86,7 @@ parseAmpliconCounts = function(countFile){
     countList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][4]
     sampleList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][2]
   }
-  ampliconCounts = data_frame("readCounts" = unlist(countList), "Sample_ID" = unlist(sampleList))
+  ampliconCounts = data_frame("counts" = unlist(countList), "Sample_ID" = unlist(sampleList))
   return(ampliconCounts)
 }
 
@@ -513,7 +513,7 @@ plot.geneCounts = function(projectDir, samplesheet, geneCounts, dashList, starLo
 
 
 #General use platemaps (in development)
-mapSheet = function(projectDir, samplesheet, whatever){
+mapSheet = function(projectDir, samplesheet, whatever, parameterLabel){
   dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
   dir.create(paste0(projectDir, "/figures/platemaps/"), showWarnings = FALSE)
   plotsPath = paste0(projectDir, "/figures/platemaps/")
@@ -523,13 +523,18 @@ mapSheet = function(projectDir, samplesheet, whatever){
   write_csv(loadedSheet, paste0(projectDir,"/", "samplesheet_withData.csv"))
   
   data = loadedSheet
-  data$readCounts = as.numeric(data$readCounts)
+  data$readCounts = as.numeric(data$counts)
   
-  plotTitle = paste0("Heatmap: ", runID)
+  if(missing(parameterLabel)){
+    plotTitle = paste0("Heatmap: ", runID)
+  } else {
+    plotTitle = paste0(parameterLabel, " - platemap for: ", runID)
+    }
+  
   
   log2_heatmap = ggplot() +
     geom_raster(data, 
-                mapping = aes(x = col, y = row, fill = log2(data$readCounts))) +
+                mapping = aes(x = col, y = row, fill = log2(data$counts))) +
     scale_x_discrete(limits = c(1:24)) +
     scale_y_discrete(limits = rev(levels(data$row))) +
     coord_equal() +
@@ -544,7 +549,7 @@ mapSheet = function(projectDir, samplesheet, whatever){
   
   unscaled_heatmap = ggplot() +
     geom_raster(data, 
-                mapping = aes(x = col, y = row, fill = data$readCounts)) +
+                mapping = aes(x = col, y = row, fill = data$counts)) +
     scale_x_discrete(limits = c(1:24)) +
     scale_y_discrete(limits = rev(levels(data$row))) +
     coord_equal() +
@@ -564,5 +569,16 @@ mapSheet = function(projectDir, samplesheet, whatever){
 }
 
 
+#Parse raw fastq counts (see gzCount.sh)
+gzCount = function(projectDir){
+  fn = list.files(projectDir, pattern = "*processedCounts.txt", recursive = TRUE, full.names = TRUE)
+  temp = read_lines(fn, skip = 2)
+  counts = {} ; samples = {}
+  for(i in 1:length(temp)){
+    counts[[i]] = round(as.numeric(strsplit(temp[i], " |rawdata/|_S")[[1]][1])/4, digits = 0)
+    samples[[i]] = strsplit(temp[i], " |rawdata/|_S")[[1]][3]
+  }
+  df = data_frame("counts" = unlist(counts), "Sample_ID" = unlist(samples))
+}
 
 
