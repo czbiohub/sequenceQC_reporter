@@ -520,7 +520,7 @@ mapSheet = function(projectDir, samplesheet, whatever){
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
   
   loadedSheet = sortSheetData(samplesheet, whatever)
-  write_csv(x = loadedSheet, path = paste0(projectDir,"/", "_loadedSamplesheet.csv"))
+  write_csv(loadedSheet, paste0(projectDir,"/", "samplesheet_withData.csv"))
   
   data = loadedSheet
   data$readCounts = as.numeric(data$readCounts)
