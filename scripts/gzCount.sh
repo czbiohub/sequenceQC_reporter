@@ -3,7 +3,10 @@
 
 project_names=$@
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR="$( cd . "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# script_base=`echo $(basename $1) | rev | cut -f 2- -d '.' | rev`
+# echo $script_base
 
 for project in ${project_names[@]}; do
 	echo "Looking for files to download for $project to $DIR"
