@@ -83,8 +83,8 @@ parseAmpliconCounts = function(countFile){
   countList = {} ; sampleList = {}
   temp = read_lines(countFile)
   for(j in 1:length(temp)){
-    countList[[j]] = strsplit(temp[j], "/|\"\t")[[1]][3]
-    sampleList[[j]] = strsplit(temp[j], "/|\"\t")[[1]][2]
+    countList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][4]
+    sampleList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][2]
   }
   ampliconCounts = data_frame("readCounts" = unlist(countList), "Sample_ID" = unlist(sampleList))
   return(ampliconCounts)
@@ -511,6 +511,57 @@ plot.geneCounts = function(projectDir, samplesheet, geneCounts, dashList, starLo
   }
 }
 
+
+#General use platemaps (in development)
+mapSheet = function(projectDir, samplesheet, whatever){
+  dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
+  dir.create(paste0(projectDir, "/figures/platemaps/"), showWarnings = FALSE)
+  plotsPath = paste0(projectDir, "/figures/platemaps/")
+  runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
+  
+  loadedSheet = sortSheetData(samplesheet, whatever)
+  write_csv(x = loadedSheet, path = paste0(projectDir,"/", "_loadedSamplesheet.csv"))
+  
+  data = loadedSheet
+  data$readCounts = as.numeric(data$readCounts)
+  
+  plotTitle = paste0("Heatmap: ", runID)
+  
+  log2_heatmap = ggplot() +
+    geom_raster(data, 
+                mapping = aes(x = col, y = row, fill = log2(data$readCounts))) +
+    scale_x_discrete(limits = c(1:24)) +
+    scale_y_discrete(limits = rev(levels(data$row))) +
+    coord_equal() +
+    scale_fill_viridis(guide_legend(title = "log2")) +
+    theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
+          legend.title = element_text(size = 7), legend.text = element_text(size = 7),
+          axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
+    facet_wrap(~data$Description) +
+    ggtitle(plotTitle)
+  ggsave(paste0(plotsPath, runID, "_log2scale_platemap.png"))
+  print("Saved heatmap for log2-scaled platemap")
+  
+  unscaled_heatmap = ggplot() +
+    geom_raster(data, 
+                mapping = aes(x = col, y = row, fill = data$readCounts)) +
+    scale_x_discrete(limits = c(1:24)) +
+    scale_y_discrete(limits = rev(levels(data$row))) +
+    coord_equal() +
+    scale_fill_viridis(guide_legend(title = "unscaled")) +
+    theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
+          legend.title = element_text(size = 7), legend.text = element_text(size = 7),
+          axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
+    facet_wrap(~data$Description) +
+    ggtitle(plotTitle)
+  ggsave(paste0(plotsPath, runID, "_unscaled_platemap.png"))
+  print("Saved heatmap for unscaled platemap")
+  
+  heatmaps = list(log2_heatmap, unscaled_heatmap)
+  
+  return(heatmaps)
+  
+}
 
 
 
