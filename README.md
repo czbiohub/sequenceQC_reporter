@@ -7,7 +7,7 @@ Use with your sequencing run prefix (should have format that looks like this `YY
 ```bash
 git clone https://github.com/czbiohub/sequenceQC_reporter
 cd sequenceQC_reporter/scripts/
-bash sync_projects.sh YYMMDD_A00111
+bash scripts/sync_projects.sh YYMMDD_A00111
 ```
 
 Example project directory
