@@ -34,10 +34,9 @@ loadSamplesheet = function(projectDir){
     samplesheet$col = as.factor(samplesheet$well_index %>% str_extract(pattern = "[0-9]{1,2}"))
     samplesheet$Description = rep(1:NUMBER_OF_PLATES, each=384)
     
-    if(is.integer(samplesheet$`Sample_ID`) == TRUE){
-      
-      samplesheet$`Sample_ID` = as.character(samplesheet$`Sample_ID`)
-    }
+    if(is.integer(samplesheet$`Sample_ID`) == TRUE){samplesheet$`Sample_ID` = as.character(samplesheet$`Sample_ID`)}
+    
+    if(samplesheet$Sample_ID[1] != samplesheet$Sample_Name[1]){samplesheet$Sample_ID[1] = samplesheet$Sample_Name[1]}
     
     print(paste0("Samplesheet loaded for sequencing run: ", runID))
   }
@@ -76,6 +75,38 @@ parseLaneBarcode = function(barcodeFile){
   
 }
 
+#Load demultiplex html report data
+loadLaneBarcode = function(projectDir){
+  
+  runID = {} ; for(i in projectDir){runID[[i]]= strsplit(i,"00_project_raw_data/")[[1]][2]}
+  laneBarcodeList = {}
+  for(i in 1:length(projectDir)){
+    barcodeFile = list.files(projectDir, pattern = "laneBarcode.html", full.names = TRUE, recursive = TRUE)
+    
+    #If no barcode files exist
+    if(length(barcodeFile) == 0){
+      print(paste0("No `laneBarcode.html` was found for sequencing run: ", runID))
+      break
+      
+    }
+    
+    #For batch directories of barcode files
+    if(length(barcodeFile) >= 1){
+      allLanes = data_frame()
+      for(j in 1:length(barcodeFile)){
+        fn = parseLaneBarcode(barcodeFile[j])
+        allLanes = rbind(allLanes, fn)
+        
+      }
+      print(paste0("Binding all reports to a data frame for ", runID))
+    }
+    
+    print(paste0("Demultiplexation report loaded for sequencing run: ", runID))
+    
+    allLanes = allLanes %>% group_by(allLanes$Sample_ID) %>% distinct(x, .keep_all = TRUE)
+    return(allLanes)
+  }
+}
 
 
 #Parse read counts for RL's amplicon fastqs
@@ -104,38 +135,6 @@ loadAmpliconCounts = function(projectDir){
     }
   }
   return(allAmps)
-}
-
-
-
-
-#Load demultiplex html report data
-loadLaneBarcode = function(projectDir){
-  
-  runID = {} ; for(i in projectDir){runID[[i]]= strsplit(i,"00_project_raw_data/")[[1]][2]}
-  laneBarcodeList = {}
-  for(i in 1:length(projectDir)){
-    barcodeFile = list.files(projectDir, pattern = "laneBarcode.html", full.names = TRUE, recursive = TRUE)
-    
-    #If no barcode files exist
-    if(length(barcodeFile) == 0){
-      print(paste0("No `laneBarcode.html` was found for sequencing run: ", runID))
-      break
-      
-    }
-    
-    #For batch directories of barcode files
-    if(length(barcodeFile) >= 1){
-      allLanes = data_frame()
-      for(j in 1:length(barcodeFile)){
-        fn = parseLaneBarcode(barcodeFile[j])
-        allLanes = rbind(allLanes, fn)
-      }
-      print(paste0("Binding all reports to a data frame for ", runID))
-    }
-    print(paste0("Demultiplexation report loaded for sequencing run: ", runID))
-    return(allLanes)
-  }
 }
 
 #Return key-value pair for yourParameter
@@ -214,17 +213,20 @@ loadStarLog = function(projectDir, yourParameter){
 }
 
 #Generate figures from Lane Barcode data
-plot.laneBarcode = function(projectDir, samplesheet, laneBarcode){
+plot.laneBarcode = function(projectDir, samplesheet, laneBarcode, loaded_samplesheet){
   dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
   dir.create(paste0(projectDir, "/figures/laneBarcode/"), showWarnings = FALSE)
   plotsPath = paste0(projectDir, "/figures/laneBarcode/")
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
-  laneBarcodeReport = left_join(samplesheet, laneBarcode, by = "Sample_ID", sort = FALSE)
-  write_csv(x = laneBarcodeReport, path = paste0(projectDir,"/", runID,"_laneBarcodeReport.csv"))
   
-  print(paste0("Wrote your Lane Barcode Report for ", runID, "to ", projectDir,"/"))
+  if(missing(loaded_samplesheet)){
+    loaded_samplesheet = left_join(samplesheet, laneBarcode, by = "Sample_ID", sort = FALSE)
+    write_csv(x = loaded_samplesheet, path = paste0(projectDir,"/", runID,"_data_lanebarcode.csv"))
+  }
   
-  data = laneBarcodeReport
+  print(paste0("Wrote your Lane Barcode Data for ", runID, "to ", projectDir,"/"))
+  
+  data = loaded_samplesheet
   data$clusters = as.numeric(data$clusters)
   
   plotTitle = paste0("Lane Barcode Heatmap: ", runID, " Parameter: Unmapped clusters")
@@ -391,6 +393,7 @@ countsByGene = function(projectDir, geneName){
       }
     }
   }
+  
   geneCounts = list(totalCounts, cellNames)
   print(paste0("Counts loaded for: ", geneName))
   return(geneCounts)
@@ -560,6 +563,7 @@ mapSheet = function(projectDir, samplesheet, whatever, parameterLabel){
     facet_wrap(~data$Description) +
     ggtitle(plotTitle)
   ggsave(paste0(plotsPath, runID, "_unscaled_platemap.png"))
+  
   print("Saved heatmap for unscaled platemap")
   
   heatmaps = list(log2_heatmap, unscaled_heatmap)
@@ -572,13 +576,14 @@ mapSheet = function(projectDir, samplesheet, whatever, parameterLabel){
 #Parse raw fastq counts (see gzCount.sh)
 gzCount = function(projectDir){
   fn = list.files(projectDir, pattern = "*processedCounts.txt", recursive = TRUE, full.names = TRUE)
+  if(length(fn) == 0){stop(paste0("No files fastq.gz counts files found. Check ", projectDir, "/processed_fastq_raw_data/"))}
   temp = read_lines(fn, skip = 2)
   counts = {} ; samples = {}
   for(i in 1:length(temp)){
     counts[[i]] = round(as.numeric(strsplit(temp[i], " |rawdata/|_S")[[1]][1])/4, digits = 0)
     samples[[i]] = strsplit(temp[i], " |rawdata/|_S")[[1]][3]
   }
-  df = data_frame("counts" = unlist(counts), "Sample_ID" = unlist(samples))
+  df = data_frame("values" = unlist(counts), "Sample_ID" = unlist(samples))
 }
 
 
