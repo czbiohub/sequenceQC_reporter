@@ -12,11 +12,11 @@ generate_wells = function(NUMBER_OF_PLATES){
 }
 
 #Sort data to samplesheet index to "Sample_ID"
-sortSheetData = function(samplesheet, whatever){
-  
+sortSheetData = function(projectDir, samplesheet, whatever, pattern){
+  runID = list(strsplit(projectDir,"00_project_raw_data/")[[1]][2])
   df = left_join(samplesheet, whatever, by = "Sample_ID", sort = FALSE)
+  write_csv(df, path = paste0(projectDir,"/", runID,"_", pattern,".csv"))
   return(df)
-  
 }
 
 #Load samplesheet for data generation and plotting. This function can be called separately for csv-only (data) and png-only (plot) generation. 
@@ -44,7 +44,7 @@ loadSamplesheet = function(projectDir){
   return(samplesheet)
 }
 
-#Parse demultiplex html report files and sort data
+#Parse demultiplex html report files and sort data. Load demultiplex html report data
 parseLaneBarcode = function(barcodeFile){
   
   for(j in barcodeFile){
@@ -74,8 +74,6 @@ parseLaneBarcode = function(barcodeFile){
   return(df)
   
 }
-
-#Load demultiplex html report data
 loadLaneBarcode = function(projectDir){
   
   runID = {} ; for(i in projectDir){runID[[i]]= strsplit(i,"00_project_raw_data/")[[1]][2]}
@@ -103,126 +101,21 @@ loadLaneBarcode = function(projectDir){
     
     print(paste0("Demultiplexation report loaded for sequencing run: ", runID))
     
-    allLanes = allLanes %>% group_by(allLanes$Sample_ID) %>% distinct(x, .keep_all = TRUE)
+    allLanes = allLanes %>% group_by(Sample_ID) %>% distinct(x, .keep_all = TRUE) %>% ungroup()
+    allLanes$clusters = as.numeric(allLanes$clusters)
     return(allLanes)
   }
 }
-
-
-#Parse read counts for RL's amplicon fastqs
-parseAmpliconCounts = function(countFile){
-  countList = {} ; sampleList = {}
-  temp = read_lines(countFile)
-  for(j in 1:length(temp)){
-    countList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][4]
-    sampleList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][2]
-  }
-  ampliconCounts = data_frame("counts" = unlist(countList), "Sample_ID" = unlist(sampleList))
-  return(ampliconCounts)
-}
-
-
-#Load read counts for RL's amplicon fastqs
-loadAmpliconCounts = function(projectDir){
-  
-  runID = {} ; for(i in projectDir){runID[[i]]= strsplit(i,"00_project_raw_data/")[[1]][2]}
-  for(i in 1:length(projectDir)){
-    countFile = list.files(projectDir, pattern = "readcount.txt", full.names = TRUE, recursive = TRUE)
-    allAmps= data_frame()
-    for(j in 1:length(countFile)){
-      fn = parseAmpliconCounts(countFile[j])
-      allAmps = rbind(allAmps, fn)
-    }
-  }
-  return(allAmps)
-}
-
-#Return key-value pair for yourParameter
-return.parameterKey = function(projectDir, yourParameter, filePattern){
-  
-  filenames = list.files(projectDir, pattern = filePattern, full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
-  temp = read_lines(filenames[1])
-  allParameters = {}
-  
-  for(i in 1:length(temp)){
-    
-    allParameters[[i]] = strsplit(temp[i], " \\|")[[1]][1]
-    print("Got keys")
-    allParameters = gsub("^\\s+","", allParameters)
-    print("Loading parameters")
-  }
-  
-  names(allParameters) = allParameters
-  keys = {}
-  keys$index = match(yourParameter, allParameters)
-  print("Match parameters")
-  keys$keynames = allParameters[yourParameter]
-  
-  checklist = {}; for(j in yourParameter){checklist[[j]] = j %in% keys$keynames}
-  
-  if(any(checklist == FALSE)){
-    print(paste0("Your parameter ", j, " wasn't found. Stopping program."))
-  } else {
-    for(j in yourParameter){
-      print(paste0("Loading your parameter: ", j))
-    }
-    return(keys)
-  }
-}
-
-#Generate your STAR stats - This input for his function is any single line or multiple lines as a PARAMETER (i.e. "Mapped Reads", "Percent Mapped Reads", "Insert Average Length") from the "log.final.out" file. This file a standard log generated afer successful STAR alignment.
-
-loadStarLog = function(projectDir, yourParameter){
-  
-  filenames = list.files(projectDir, pattern = "*log.final.out", full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
-  if(length(filenames) == 0){
-    
-    print(paste0("No `log.final.out` files were found for sequencing run: ", runID))
-    break
-    
-  }
-  
-  runID = list(strsplit(projectDir,"00_project_raw_data/")[[1]][2])
-  for(i in 1:length(filenames)){runID$sampleID[[i]] = strsplit(filenames[i], "logs/|_S")[[1]][2]}
-  
-  filePattern = "*log.final.out"
-  runID$parameterKey = return.parameterKey(projectDir, yourParameter, filePattern)
-  
-  for(j in 1:length(runID$parameterKey$index)){
-    currentKey = runID$parameterKey$index[j]
-    fileData = {}
-    for(i in 1:length(filenames)){
-      if(is.na(i)){
-        print("No log files for this run. Skipping.")
-        break
-      } else {
-        temp = read_lines(filenames[i])
-        fileData[[i]] = strsplit(temp[currentKey], "\t")[[1]][2]
-        fileData = gsub("%","", fileData)
-      }
-    }
-    runID$parameterData[[j]] = fileData
-  }
-  
-  log.star = {} ; for(i in 1:length(runID$parameterData)){log.star[[i]] = as.numeric(unlist(runID$parameterData[i]))}
-  names(log.star) = unlist(runID$parameterKey$keynames)
-  log.star$Sample_ID= unlist(runID$sampleID)
-  df = as_tibble(log.star[1:length(log.star)])
-  return(df)
-  
-}
-
-#Generate figures from Lane Barcode data
 plot.laneBarcode = function(projectDir, samplesheet, laneBarcode, loaded_samplesheet){
   dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
   dir.create(paste0(projectDir, "/figures/laneBarcode/"), showWarnings = FALSE)
   plotsPath = paste0(projectDir, "/figures/laneBarcode/")
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
   
-  if(missing(loaded_samplesheet)){
-    loaded_samplesheet = left_join(samplesheet, laneBarcode, by = "Sample_ID", sort = FALSE)
-    write_csv(x = loaded_samplesheet, path = paste0(projectDir,"/", runID,"_data_lanebarcode.csv"))
-  }
+  # if(missing(loaded_samplesheet)){
+  #   loaded_samplesheet = left_join(samplesheet, laneBarcode, by = "Sample_ID", sort = FALSE)
+  #   write_csv(x = loaded_samplesheet, path = paste0(projectDir,"/", runID,"_data_lanebarcode.csv"))
+  # }
   
   print(paste0("Wrote your Lane Barcode Data for ", runID, "to ", projectDir,"/"))
   
@@ -267,22 +160,101 @@ plot.laneBarcode = function(projectDir, samplesheet, laneBarcode, loaded_samples
   
 }
 
-#Generate figures from STAR log data.
+#Parse read counts for RL's amplicon fastqs. Load read counts for RL's amplicon fastqs
+parseAmpliconCounts = function(countFile){
+  countList = {} ; sampleList = {}
+  temp = read_lines(countFile)
+  for(j in 1:length(temp)){
+    countList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][4]
+    sampleList[[j]] = strsplit(temp[j], "/|_S|\"\t")[[1]][2]
+  }
+  ampliconCounts = data_frame("counts" = unlist(countList), "Sample_ID" = unlist(sampleList))
+  return(ampliconCounts)
+}
+loadAmpliconCounts = function(projectDir){
+  
+  runID = {} ; for(i in projectDir){runID[[i]]= strsplit(i,"00_project_raw_data/")[[1]][2]}
+  for(i in 1:length(projectDir)){
+    countFile = list.files(projectDir, pattern = "readcount.txt", full.names = TRUE, recursive = TRUE)
+    allAmps= data_frame()
+    for(j in 1:length(countFile)){
+      fn = parseAmpliconCounts(countFile[j])
+      allAmps = rbind(allAmps, fn)
+    }
+  }
+  return(allAmps)
+}
 
-plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
-  dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
-  dir.create(paste0(projectDir, "/figures/star/"), showWarnings = FALSE)
-  plotsPath = paste0(projectDir, "/figures/star/")
+#Generate your STAR stats - This input for his function is any single line or multiple lines as a PARAMETER (i.e. "Mapped Reads", "Percent Mapped Reads", "Insert Average Length") from the "log.final.out" file. This file a standard log generated afer successful STAR alignment.
+#Return key-value pair for yourParameter
+return.parameterKey = function(projectDir, yourParameter, filePattern){
+  
+  filenames = list.files(projectDir, pattern = filePattern, full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
+  temp = read_lines(filenames[1])
+  allParameters = {}
+  
+  for(i in 1:length(temp)){
+    allParameters[[i]] = strsplit(temp[i], " \\|")[[1]][1]
+    allParameters = gsub("^\\s+","", allParameters)
+  }
+  
+  names(allParameters) = allParameters
+  keys = {}
+  keys$index = match(yourParameter, allParameters)
+  print("Match parameters")
+  keys$keynames = allParameters[yourParameter]
+  
+  checklist = {}; for(j in yourParameter){checklist[[j]] = j %in% keys$keynames}
+  
+  if(any(checklist == FALSE)){print(paste0("Your parameter ", j, " wasn't found. Stopping program."))
+  } else {return(keys)}
+  
+}
+
+loadStarLog = function(projectDir, yourParameter){
+  
+  filenames = list.files(projectDir, pattern = "*log.final.out", full.names = TRUE, recursive = TRUE, include.dirs = TRUE)
+  if(length(filenames) == 0){print(paste0("No `log.final.out` files were found for sequencing run: ", runID)) ; break}
+  
+  runID = list(strsplit(projectDir,"00_project_raw_data/")[[1]][2])
+  for(i in 1:length(filenames)){runID$sampleID[[i]] = strsplit(filenames[i], "logs/|_S")[[1]][2]}
+  
+  filePattern = "*log.final.out"
+  runID$parameterKey = return.parameterKey(projectDir, yourParameter, filePattern)
+  
+  for(j in 1:length(runID$parameterKey$index)){
+    currentKey = runID$parameterKey$index[j]
+    fileData = {}
+    for(i in 1:length(filenames)){
+      if(is.na(i)){print("No log files for this run. Skipping.") ; break
+        } else {
+        temp = read_lines(filenames[i])
+        fileData[[i]] = strsplit(temp[currentKey], "\t")[[1]][2]
+        fileData = gsub("%","", fileData)
+      }
+    }
+    runID$parameterData[[j]] = fileData
+  }
+  
+  df = {} ; for(i in 1:length(runID$parameterData)){df[[i]] = as.numeric(unlist(runID$parameterData[i]))}
+  names(df) = unlist(runID$parameterKey$keynames)
+  df$Sample_ID= unlist(runID$sampleID)
+  df = as_tibble(df[1:length(df)])
+  df[1] = round(df[1]/4, digits = 0)
+  return(df)
+}
+
+plot.starLog = function(projectDir, yourParameter, mapped_data, dataName){
+  plotsPath = (paste0(projectDir, "/figures/", dataName,"/"))
+  dir.create(plotsPath, recursive = TRUE, showWarnings = FALSE)
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
-  starLogReport = left_join(samplesheet, starLog, by = "Sample_ID", sort = FALSE)
-  write_csv(x = starLogReport, path = paste0(projectDir,"/", runID,"_starLogReport.csv"))
-  print(paste0("Wrote your Star Log Report for ", runID, "to ", projectDir,"/"))
-  data = starLogReport
+  
+  data = mapped_data
   figures = {}
   
   for(i in 1:length(yourParameter)){
     
-    plotTitle = paste0("STAR alignment parameter: ", yourParameter[i])
+    plotTitle = paste0(dataName, " Parameter: ", yourParameter[i])
     
     if(str_detect(yourParameter[i], "%")){
       parameterName = gsub("%", "percent", yourParameter[i])
@@ -292,20 +264,18 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
     print(paste0("Generating platemaps for ", parameterName))
     
     log2_heatmap = ggplot() +
-      geom_raster(data,
-                  mapping = aes(x = col, y = row, fill = log2(data[[yourParameter[i]]]))) +
+      geom_raster(data, mapping = aes(x = col, y = row, fill = log2(data[[yourParameter[i]]]))) +
       scale_x_discrete(limits = c(1:24)) + scale_y_discrete(limits = rev(levels(data$row))) + coord_equal() +
       scale_fill_viridis(guide_legend(title = paste0("log2"))) +
       theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
             legend.title = element_text(size = 7), legend.text = element_text(size = 7),
             axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
       facet_wrap(~data$Description) +
-      ggtitle(plotTitle)
-    ggsave(paste0(plotsPath, runID, "_", parameterName,"_starLogReport_log2scale_heatmap.png"))
+      ggtitle(plotTitle) +
+      ggsave(paste0(plotsPath, runID, "_", parameterName,"_", dataName, "_log2scale_heatmap.png"))
     
     unscaled_heatmap = ggplot() +
-      geom_raster(data,
-                  mapping = aes(x = col, y = row, fill = data[[yourParameter[i]]])) +
+      geom_raster(data, mapping = aes(x = col, y = row, fill = data[[yourParameter[i]]])) +
       scale_x_discrete(limits = c(1:24)) + scale_y_discrete(limits = rev(levels(data$row))) + coord_equal() +
       scale_fill_viridis(guide_legend(title = paste0("unscaled"))) +
       theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
@@ -313,7 +283,7 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
             axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
       facet_wrap(~data$Description) +
       ggtitle(plotTitle) +
-      ggsave(paste0(plotsPath, runID, "_", parameterName,"_starLogReport_unscaled_heatmap.png"))
+      ggsave(paste0(plotsPath, runID, "_", parameterName,"_", dataName, "_unscaled_heatmap.png"))
     
     
     log2_boxplot = ggplot(data) +
@@ -323,7 +293,7 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
       theme_classic() +
       theme(axis.text.x=element_text(angle = 90)) +
       ggtitle(plotTitle) +
-      ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_boxplot.png"))
+      ggsave(paste0(plotsPath, runID, "_", parameterName, "_", dataName, "_log2scale_boxplot.png"))
     
     unscaled_boxplot = ggplot(data) +
       geom_boxplot(mapping = aes(x = as.factor(Description), y = data[[yourParameter[i]]], fill = as.factor(Description))) +
@@ -332,7 +302,7 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
       theme_classic() +
       theme(axis.text.x=element_text(angle = 90)) +
       ggtitle(plotTitle) +
-      ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_unscaled_boxplot.png"))
+      ggsave(paste0(plotsPath, runID, "_", parameterName, "_", dataName, "_unscaled_boxplot.png"))
   }
   
   if(is.vector(data$`Uniquely mapped reads number`) == TRUE){
@@ -343,7 +313,7 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
         labs(x = "Uniquely mapped reads number", y = "Number of input reads") +
         facet_wrap(~Description) + ggtitle("Correlation of Unmapped Input to Mapped Unique") +
         theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
-        ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_scatterplot.png"))
+        ggsave(paste0(plotsPath, runID, "_", parameterName, "_", dataName, "_log2scale_scatterplot.png"))
       
       if(is.vector(data$`Uniquely mapped reads %`) == TRUE){
         ggplot(data) +
@@ -351,7 +321,7 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
           labs(x = "Uniquely mapped reads number", y = "Uniquely mapped reads %") +
           facet_wrap(~Description) + ggtitle("Correlation of Mapped Reads % to Mapped Unique") +
           theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
-          ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_mappedReads2percent_scatterplot.png"))
+          ggsave(paste0(plotsPath, runID, "_", parameterName, "_", dataName, "_log2scale_mappedReads2percent_scatterplot.png"))
         
         
         ggplot(data) +
@@ -359,7 +329,7 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
           labs(x = "Number of input reads", y = "Uniquely mapped reads %") +
           facet_wrap(~Description) + ggtitle("Correlation of Mapped Reads % to Unmapped Input") +
           theme_classic() + theme(axis.text.x=element_text(angle = 90)) +
-          ggsave(paste0(plotsPath, runID, "_", parameterName, "_starLogReport_log2scale_unmappedReads2percent_scatterplot.png"))
+          ggsave(paste0(plotsPath, runID, "_", parameterName, "_", dataName, "_log2scale_unmappedReads2percent_scatterplot.png"))
       }
     }
   }
@@ -367,7 +337,7 @@ plot.starLog = function(projectDir, yourParameter, samplesheet, starLog){
 }
 
 
-#Parse htseq-count files to count by a given input for geneName (important: geneName must be a character string that exists in the htseq count file)
+#Parse htseq-count files to count by a given input for geneName (important: geneName must be a character string that exists in the htseq count file). Load a dataframe with counts for a list containing multiple geneNames indexed by 'Sample_ID'
 countsByGene = function(projectDir, geneName){
   
   filenames = list.files(projectDir, pattern = "*htseq-count", full.names = TRUE, recursive = TRUE)
@@ -399,8 +369,6 @@ countsByGene = function(projectDir, geneName){
   return(geneCounts)
   
 }
-
-#Load a dataframe with counts for a list containing multiple geneNames indexed by 'Sample_ID'
 loadGeneCounts = function(dashList){
   
   lil_dashGenes = {}
@@ -420,8 +388,6 @@ loadGeneCounts = function(dashList){
   return(df)
   
 }
-
-#Generate figures from htseq-count data.
 plot.geneCounts = function(projectDir, samplesheet, geneCounts, dashList, starLog){
   dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
   dir.create(paste0(projectDir, "/figures/htseq-count/"), showWarnings = FALSE)
@@ -514,76 +480,91 @@ plot.geneCounts = function(projectDir, samplesheet, geneCounts, dashList, starLo
   }
 }
 
+#Parse raw fastq counts (see gzCount.sh)
+gzCount = function(projectDir, TypeofSequencer){
+  fn = list.files(projectDir, pattern = "*processedCounts.txt", recursive = TRUE, full.names = TRUE)
+  if(length(fn) == 0){stop(paste0("No files fastq.gz files found. Check", projectDir, "/processed_fastq_raw_data/"))}
+  temp = read_lines(fn, skip = 2)
+  counts = {} ; samples = {}
+  print(paste0("Processing ", TypeofSequencer, " run..." ))
+  
+  for(i in 1:length(temp)){
+    
+    if(missing(TypeofSequencer)){
+      prompt = readline("Enter TypeofSequencer to continue (i.e. 'Novaseq'' or 'Nextseq'):")
+      TypeofSequencer = as.character(prompt)
+      if(is.na(prompt)){print("No input") ; break}
+    } else {counts[[i]] = round(as.numeric(strsplit(temp[i], " |rawdata/|_S")[[1]][1]), digits = 0)}
+    
+    samples[[i]] = strsplit(temp[i], " |rawdata/|_S")[[1]][3]
+  }
+  df = data_frame("clusters" = unlist(counts), "Sample_ID" = unlist(samples))
+  df = df %>% group_by(Sample_ID) %>% distinct(x, .keep_all = TRUE) %>% ungroup()
+  return(df)
+}
 
-#General use platemaps (in development)
-mapSheet = function(projectDir, samplesheet, whatever, parameterLabel){
-  dir.create(paste0(projectDir, "/figures/"), showWarnings = FALSE)
-  dir.create(paste0(projectDir, "/figures/platemaps/"), showWarnings = FALSE)
-  plotsPath = paste0(projectDir, "/figures/platemaps/")
+
+map.loaded_samplesheet = function(projectDir, loaded_samplesheet, dataName = "Type data name", max = 3000000, widthBins = 100000){
+  plotsPath = (paste0(projectDir, "/figures/", dataName,"/"))
+  dir.create(plotsPath, recursive = TRUE, showWarnings = FALSE)
   runID = strsplit(projectDir,"00_project_raw_data/")[[1]][2]
   
-  loadedSheet = sortSheetData(samplesheet, whatever)
-  write_csv(loadedSheet, paste0(projectDir,"/", "samplesheet_withData.csv"))
+  print(paste0("Wrote your ", dataName, " for ", runID, "to ", projectDir,"/"))
   
-  data = loadedSheet
-  data$readCounts = as.numeric(data$counts)
+  data = loaded_samplesheet
+  data$clusters = as.numeric(data$clusters)
   
-  if(missing(parameterLabel)){
-    plotTitle = paste0("Heatmap: ", runID)
-  } else {
-    plotTitle = paste0(parameterLabel, " - platemap for: ", runID)
-    }
+
   
+  plotTitle = paste0(dataName, ": ", runID)
   
   log2_heatmap = ggplot() +
-    geom_raster(data, 
-                mapping = aes(x = col, y = row, fill = log2(data$counts))) +
-    scale_x_discrete(limits = c(1:24)) +
-    scale_y_discrete(limits = rev(levels(data$row))) +
-    coord_equal() +
+    geom_raster(data, mapping = aes(x = col, y = row, fill = log2(data$clusters))) +
+    scale_x_discrete(limits = c(1:24)) + scale_y_discrete(limits = rev(levels(data$row))) + coord_equal() +
     scale_fill_viridis(guide_legend(title = "log2")) +
     theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
           legend.title = element_text(size = 7), legend.text = element_text(size = 7),
-          axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-    facet_wrap(~data$Description) +
-    ggtitle(plotTitle)
-  ggsave(paste0(plotsPath, runID, "_log2scale_platemap.png"))
-  print("Saved heatmap for log2-scaled platemap")
+          #axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) + 
+          axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank(), axis.line = element_blank()) +
+    facet_wrap(~data$Description) + 
+    ggtitle(plotTitle) +
+  ggsave(paste0(plotsPath, runID, "_", dataName, "_log2scale_heatmap.png"), width = 9, height = 5, dpi = 300, units = "in")
+  print("Saved heatmap for log2-scaled clusters")
   
   unscaled_heatmap = ggplot() +
-    geom_raster(data, 
-                mapping = aes(x = col, y = row, fill = data$counts)) +
-    scale_x_discrete(limits = c(1:24)) +
-    scale_y_discrete(limits = rev(levels(data$row))) +
-    coord_equal() +
+    geom_raster(data, mapping = aes(x = col, y = row, fill = data$clusters)) +
+    scale_x_discrete(limits = c(1:24)) + scale_y_discrete(limits = rev(levels(data$row))) + coord_equal() +
     scale_fill_viridis(guide_legend(title = "unscaled")) +
     theme(strip.text = element_blank(), plot.title = element_text(size = 9, hjust = 0.5),
           legend.title = element_text(size = 7), legend.text = element_text(size = 7),
-          axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-    facet_wrap(~data$Description) +
-    ggtitle(plotTitle)
-  ggsave(paste0(plotsPath, runID, "_unscaled_platemap.png"))
+          #axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) + 
+          axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank(), axis.line = element_blank()) + 
+    facet_wrap(~data$Description) + 
+    #ggtitle(plotTitle) +
+  ggsave(paste0(plotsPath, runID, "_", dataName, "_unscaled_heatmap.png"), width = 9, height = 5, dpi = 300, units = "in")
+  print("Saved heatmap for unscaled clusters")
   
-  print("Saved heatmap for unscaled platemap")
+  h1 = ggplot(df) + 
+    geom_histogram(mapping = aes(x = data$clusters, y = ..count..), binwidth = widthBins, fill = 'white', col = 'black') + xlim(0, max) +
+    geom_vline(xintercept = mean(df$clusters), col = 'red') + 
+    geom_text(aes(x = mean(df$clusters) + 0.15*mean(df$clusters), y = 1500, label = paste0("Mean+SD: ", round(mean(df$clusters), digits = 0)," +/- ", round(sd(df$clusters), digits = 1), "\n", length(which(df$clusters > max))," wells above ", max, " reads"), hjust = 0.0), alpha = 0.8) +
+    labs(x = "Number of Reads Per Library", y = "Number of Cells") + theme_minimal() + 
+    ggsave(paste0(plotsPath, runID, "_", dataName, "_unscaled_histogram.png"), width = 9, height = 5, dpi = 300, units = "in")
+    print("Saved histogram for unscaled clusters")
   
-  heatmaps = list(log2_heatmap, unscaled_heatmap)
+  h2 = ggplot(df) +
+    geom_histogram(mapping = aes(x = log2(df$clusters), y = ..ncount..), fill = 'white', col = 'black') + 
+    geom_vline(xintercept = log2(mean(df$clusters)), col = 'red') +
+    labs(x = "Log2 Reads Per Library", y = "Number of Cells (Normalized)") + theme_minimal() + 
+    ggsave(paste0(plotsPath, runID, "_", dataName, "_log2scale_histogram.png"), width = 9, height = 5, dpi = 300, units = "in")
+    print("Saved histogram for log2scaled clusters")
+
+  plots = plot_grid(log2_heatmap, unscaled_heatmap, h1, h2, labels = "AUTO")
+  title  = ggdraw() + draw_label(plotTitle, fontface='bold')
+  plots = plot_grid(title, plots, ncol=1, rel_heights=c(0.1, 1))
+  ggsave(paste0(plotsPath, runID, "_", dataName, "_grid.png"), width = 9, height = 7, dpi = 300, units = "in")
   
-  return(heatmaps)
+  return(plots)
   
 }
-
-
-#Parse raw fastq counts (see gzCount.sh)
-gzCount = function(projectDir){
-  fn = list.files(projectDir, pattern = "*processedCounts.txt", recursive = TRUE, full.names = TRUE)
-  if(length(fn) == 0){stop(paste0("No files fastq.gz counts files found. Check ", projectDir, "/processed_fastq_raw_data/"))}
-  temp = read_lines(fn, skip = 2)
-  counts = {} ; samples = {}
-  for(i in 1:length(temp)){
-    counts[[i]] = round(as.numeric(strsplit(temp[i], " |rawdata/|_S")[[1]][1])/4, digits = 0)
-    samples[[i]] = strsplit(temp[i], " |rawdata/|_S")[[1]][3]
-  }
-  df = data_frame("values" = unlist(counts), "Sample_ID" = unlist(samples))
-}
-
 
