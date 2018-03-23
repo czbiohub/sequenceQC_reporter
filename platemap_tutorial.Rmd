@@ -1,0 +1,61 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+
+# install.packages("tidyverse")
+# install.packages("stringr")
+# install.packages("viridis")
+
+library(tidyverse)
+library(stringr)
+library(viridis)
+source('~/sequenceQC_reporter/qc_controller.R')
+```
+
+```{r}
+path = '~/sequenceQC_reporter/00_project_raw_data/'
+runID = '180131_NB501961_0057_AHFMVHBGX5'
+projectDir = paste0(path, runID)
+```
+
+```{r}
+samplesheet = loadSamplesheet(projectDir)
+```
+
+```{r}
+unmapped_data = loadLaneBarcode(projectDir)
+View(unmapped_data)
+```
+
+```{r}
+key_parameters = c('Uniquely mapped reads number', 'Number of input reads')
+starlog = loadStarLog(projectDir, key_parameters)
+View(starlog)
+```
+
+```{r}
+df = sortSheetData(projectDir, samplesheet, whatever = unmapped_data, saveFile = FALSE)
+df = sortSheetData(projectDir, df, whatever = starlog, saveFile = TRUE)
+```
+
+```{r}
+unmapped_reads_plot = map_whatever(projectDir, data = df, column_name = 'clusters', log2 = TRUE, savePlot = FALSE)
+unmapped_reads_plot
+```
+
+```{r}
+for(parameter in key_parameters){
+mapped_reads_plot = map_whatever(projectDir, data = df, column_name = parameter, log2 = FALSE, savePlot = FALSE)
+print(mapped_reads_plot) 
+}
+
+```
+
+
