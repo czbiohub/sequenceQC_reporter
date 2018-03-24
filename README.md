@@ -30,8 +30,14 @@ Open R file or [RStudio](https://www.rstudio.com/) notebook after sync completes
 
 Navigate to the parent project directory (this was just created) > Open `platemap_tutorial.Rmd` in RStudio and follow instructions there.
 
+_Example workthrough_  
+
 ```r
-source('~/sequenceQC_reporter/sequenceQC_reporter_functions.R')
+library(tidyverse)
+library(stringr)
+library(viridis)
+source('~/sequenceQC_reporter/qc_controller.R')
+
 yourRunID = 'YYMMDD_A00111'
 projectDir = paste0("~/sequenceQC_reporter/00_project_raw_data/", yourRunID)
 samplesheet = loadSamplesheet(projectDir)
