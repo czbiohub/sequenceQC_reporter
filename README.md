@@ -6,34 +6,38 @@ Use with your sequencing run prefix (should have format that looks like this `YY
 
 ```bash
 git clone https://github.com/czbiohub/sequenceQC_reporter
-cd sequenceQC_reporter/scripts/
+cd sequenceQC_reporter
 bash scripts/sync_projects.sh YYMMDD_A00111
 ```
+
+The script will sync the files needed to run the R script.
 
 Example project directory
 ```bash
   .
   ├── 00_project_raw_data
-  │   ├── 180118_M05295_0075_000000000-D3H9T
+  │   ├── YYMMDD_A00111
   │   │   ├── htseq-counts
   │   │   ├── reports
   │   │   ├── sample-sheets
   │   │   ├── sorted_bams
   │   │   └── star_logs
-  │   └── 180126_M05295_0077_000000000-BJNBC
-  │       ├── htseq-counts
-  │       ├── reports
-  │       ├── sample-sheets
-  │       ├── sorted_bams
-  │       └── star_logs
 ```
 
-Open R file or [RStudio](https://www.rstudio.com/) notebook after sync completes.
+
+
+Open R file or [RStudio](https://www.rstudio.com/) notebook after sync completes. On the RStudio navigation pane: File > 'Create New project' > 'Existing directory' > Browse and set path to `/sequenceQC_reporter/` > Create project.
+
+Navigate to the parent project directory (this was just created) > Open `platemap_tutorial.Rmd` in RStudio and follow instructions there.
+
 ```r
 source('~/sequenceQC_reporter/sequenceQC_reporter_functions.R')
-yourRunID = '180202_NB501961_0059_AHFLYGBGX5'
+yourRunID = 'YYMMDD_A00111'
 projectDir = paste0("~/sequenceQC_reporter/00_project_raw_data/", yourRunID)
 samplesheet = loadSamplesheet(projectDir)
-plotReads = mapSheet(projectDir, samplesheet, gzCount(projectDir), "Processed fastq.gz counts")
+key_parameters = c('Uniquely mapped reads number', 'Number of input reads')
+starlog = loadStarLog(projectDir, key_parameters)
+df = sortSheetData(projectDir, samplesheet, whatever = starlog, saveFile = FALSE)
+heatmap = map_whatever(projectDir, data = df, column_name = 'clusters', log2 = TRUE, savePlot = FALSE)
 ```
 
