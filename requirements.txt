@@ -1,6 +1,0 @@
-click
-seaborn
-pandas
-matplotlib
-scipy
-BeautifulSoup4
